@@ -147,11 +147,10 @@ class Recover(Checks):
 
     def check_jpg(self, i):
         jpg = "{:03d}.jpg".format(i)
+        self.require(jpg)
+
         if self.hash(jpg) == self.hashes[i]:
             return
-
-        if not os.path.exists(jpg):
-            raise Error("recovered image does not exist")
 
         err = Error("recovered image does not match")
 
