@@ -1,4 +1,5 @@
 from check50 import *
+import os
 
 class Recover(Checks):
     hashes = [
@@ -54,6 +55,59 @@ class Recover(Checks):
         "3510482b20a5b93eb8e8558227fa80f8460581f71e433932d11bac989e9d17fc"   # 049.jpg
     ]
 
+    sizes = [
+        45568,   # 000.jpg
+        51200,   # 001.jpg
+        20992,   # 002.jpg
+        26112,   # 003.jpg
+        62976,   # 004.jpg
+        221696,  # 005.jpg
+        183296,  # 006.jpg
+        54784,   # 007.jpg
+        45568,   # 008.jpg
+        171520,  # 009.jpg
+        35840,   # 010.jpg
+        57856,   # 011.jpg
+        173056,  # 012.jpg
+        75776,   # 013.jpg
+        49152,   # 014.jpg
+        202752,  # 015.jpg
+        22016,   # 016.jpg
+        183296,  # 017.jpg
+        31232,   # 018.jpg
+        44032,   # 019.jpg
+        194560,  # 020.jpg
+        56832,   # 021.jpg
+        220672,  # 022.jpg
+        77824,   # 023.jpg
+        25088,   # 024.jpg
+        233984,  # 025.jpg
+        235008,  # 026.jpg
+        32768,   # 027.jpg
+        44032,   # 028.jpg
+        208896,  # 029.jpg
+        39936,   # 030.jpg
+        49664,   # 031.jpg
+        278528,  # 032.jpg
+        221696,  # 033.jpg
+        47616,   # 034.jpg
+        179712,  # 035.jpg
+        20480,   # 036.jpg
+        55808,   # 037.jpg
+        202240,  # 038.jpg
+        86528,   # 039.jpg
+        56832,   # 040.jpg
+        226304,  # 041.jpg
+        210432,  # 042.jpg
+        161792,  # 043.jpg
+        21504,   # 044.jpg
+        60928,   # 045.jpg
+        16896,   # 046.jpg
+        27648,   # 047.jpg
+        162304,  # 048.jpg
+        34304    # 049.jpg
+    ]
+
     @check()
     def exists(self):
         """recover.c exists."""
@@ -74,23 +128,46 @@ class Recover(Checks):
         """recovers 000.jpg correctly"""
         self.add("card.raw")
         self.spawn("./recover card.raw").exit(0, timeout=10)
-        if self.hash("000.jpg") != self.hashes[0]:
-            raise Error("recovered image does not match")
+        self.check_jpg(0)
 
     @check("compiles")
     def middle_images(self):
         """recovers middle images correctly"""
         self.add("card.raw")
         self.spawn("./recover card.raw").exit(0, timeout=10)
-
-        for i, hash in enumerate(self.hashes[1:-1], 1):
-            if hash != self.hash("{:03d}.jpg".format(i)):
-                raise Error("recovered image does not match")
+        for i in range(49):
+            self.check_jpg(i)
 
     @check("compiles")
     def last_image(self):
         """recovers 049.jpg correctly"""
         self.add("card.raw")
         self.spawn("./recover card.raw").exit(0, timeout=10)
-        if self.hash("049.jpg") != self.hashes[-1]:
-            raise Error("recovered image does not match")
+        self.check_jpg(49)
+
+    def check_jpg(self, i):
+        jpg = "{:03d}.jpg".format(i)
+        if self.hash(jpg) == self.hashes[i]:
+            return
+
+        if not os.path.exists(jpg):
+            raise Error("recovered image does not exist")
+
+        err = Error("recovered image does not match")
+
+        with open(jpg, "rb") as f:
+            header = bytearray(f.read(4))
+        if len(header) >= 4:
+            header[3] = header[3] & 0xf0
+
+        file_len = os.path.getsize(jpg)
+
+        if header != b'\xff\xd8\xff\xf0':
+            err.helpers = "Does {} have a correct jpeg header?".format(jpg)
+        elif file_len % 512 != 0:
+            err.helpers = "Is {} a multiple of 512 bytes?".format(jpg)
+        elif file_len < self.sizes[i]:
+            err.helpers = "It looks like {} is shorter than expected.".format(jpg)
+        elif file_len > self.sizes[i]:
+            err.helpers = "It looks like {} is longer than expected.".format(jpg)
+        raise err
