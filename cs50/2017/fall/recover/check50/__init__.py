@@ -161,10 +161,8 @@ class Recover(Checks):
 
         file_len = os.path.getsize(jpg)
 
-        if header != b'\xff\xd8\xff\xf0':
+        if header != b'\xff\xd8\xff\xe0':
             err.helpers = "Does {} have a correct jpeg header?".format(jpg)
-        elif file_len % 512 != 0:
-            err.helpers = "Is {} a multiple of 512 bytes?".format(jpg)
         elif file_len < self.sizes[i]:
             err.helpers = "It looks like {} is shorter than expected.".format(jpg)
         elif file_len > self.sizes[i]:
